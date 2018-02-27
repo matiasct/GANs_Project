@@ -1,21 +1,14 @@
 import random
 import os
-
+import torch
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
-import torchvision.transforms as transforms
-import torchsample as ts
+from torchvision import datasets, transforms
+#import torchsample as ts
 
 # borrowed from http://pytorch.org/tutorials/advanced/neural_style_tutorial.html
 # and http://pytorch.org/tutorials/beginner/data_loading_tutorial.html
 # define a training image loader that specifies transforms on images. See documentation for more details.
-train_transformer = transforms.Compose([
-    transforms.Resize((64,64)),  # resize the image to 64x64 (remove if images are already 64x64)
-    transforms.RandomHorizontalFlip(),   # randomly flip image horizontally
-    ts.transforms.Rotate(20), # data augmentation: rotation
-    ts.transforms.Rotate(-20), # data augmentation: rotation
-    transforms.ToTensor()])  # transform it into a torch tensor
-
 
 class ChairsDataset(Dataset):
     """
@@ -50,13 +43,13 @@ class ChairsDataset(Dataset):
             image: (Tensor) transformed image
             label: (int) corresponding label of image
         """
-        image = Image.open(self.filenames[idx]).convert('RGB') # PIL image
+        image = Image.open(self.filenames[idx]) # PIL image
 
         image = self.transform(image)
         return image, self.labels[idx]
 
 
-def fetch_dataloader(data_dir, batch_size):
+def fetch_dataloader(data_dir, batch_size, dataset):
     """
     Fetches the DataLoader object for each type in types from data_dir.
 
@@ -68,7 +61,23 @@ def fetch_dataloader(data_dir, batch_size):
     Returns:
         data: (dict) contains the DataLoader object for each type in types
     """
+    train_transformer = transforms.Compose([
+                transforms.Resize((64,64)),        # resize the image to 64x64 (remove if images are already 64x64)
+                transforms.RandomHorizontalFlip(),   # randomly flip image horizontally
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])  # transform it into a torch tensor
 
-    dataloader = DataLoader(ChairsDataset(data_dir, train_transformer), batch_size=batch_size, shuffle=True)
+    if dataset == "chairs":
+        dataloader = DataLoader(ChairsDataset(data_dir, train_transformer), batch_size=batch_size, shuffle=True)
+
+    elif dataset == "cifar10":
+        dataloader = torch.utils.data.DataLoader(
+            datasets.CIFAR10(data_dir, train=True, download=True, transform=train_transformer),
+            batch_size=batch_size, shuffle=True)
+
+    elif dataset == "imagenet":
+        dataloader = torch.utils.data.DataLoader(
+            datasets.ImageFolder(data_dir, transform=train_transformer),
+            batch_size=batch_size, shuffle=True)
 
     return dataloader

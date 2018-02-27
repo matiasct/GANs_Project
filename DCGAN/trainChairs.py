@@ -8,11 +8,14 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 import logging
 from tqdm import tqdm
+import utils
 import model.netChairs as net
 import model.data_loader as data_loader
+import matplotlib.colors as colors
 import numpy as np
 from PIL import Image
 #from evaluate import evaluate
+import scipy.misc
 
 
 
@@ -41,6 +44,7 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
 
 
             inputs_real, labels_real, inputs_fake, labels_fake = Variable(inputs_real), Variable(labels_real),Variable(inputs_fake), Variable(labels_fake)
+
 
             # compute D_model with real input, and compute loss
             D_output = D_model(inputs_real).squeeze()
@@ -87,8 +91,14 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
         return D_model_train_loss.data[0], G_model_train_loss.data[0]
 
 
-def train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch):
+def train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch, model_dir, restore_file=None):
     """Train the model and evaluate every epoch"""
+
+    # reload weights from restore_file if specified
+    if restore_file is not None:
+        restore_path = os.path.join(model_dir, restore_file + '.pth.tar')
+        logging.info("Restoring parameters from {}".format(restore_path))
+        utils.load_checkpoint(restore_path, D_model, G_model, D_optimizer, G_optimizer)
 
     print('training start!')
     start_time = time.time()
@@ -130,6 +140,14 @@ def train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, trai
         print("iteration number "+str(epoch))
         print('[%d/%d] - ptime: %.2f, loss_d: %.3f, loss_g: %.3f' % ((epoch + 1), train_epoch, per_epoch_ptime, torch.mean(torch.FloatTensor(D_model_losses)), torch.mean(torch.FloatTensor(G_model_losses))))
 
+        # Save weights
+        utils.save_checkpoint({'epoch': epoch + 1,
+                               'D_model_state_dict': D_model.state_dict(),
+                               'G_model_state_dict': G_model.state_dict(),
+                               'D_optim_dict': D_optimizer.state_dict(),
+                               'G_optim_dict': G_optimizer.state_dict()},
+                               is_best=False,
+                               checkpoint = model_dir)
 
 
         #save test pictures after every epoch:
@@ -153,9 +171,10 @@ def train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, trai
         pickle.dump(train_hist, f)
 
 
-fixed_z_ = torch.randn((5 * 5, 100)).view(-1, 100, 1, 1)    # fixed noise
-fixed_z_ = Variable(fixed_z_, volatile=True)
 def show_result(num_epoch, show = False, save = False, path = 'result.png', isFix=False):
+
+    fixed_z_ = torch.randn((5 * 5, 100)).view(-1, 100, 1, 1)    # fixed noise
+    fixed_z_ = Variable(fixed_z_, volatile=True)
 
     z_ = torch.randn((5*5, 100)).view(-1, 100, 1, 1)
     z_ = Variable(z_, volatile=True)
@@ -177,7 +196,8 @@ def show_result(num_epoch, show = False, save = False, path = 'result.png', isFi
         i = k // 5
         j = k % 5
         ax[i, j].cla()
-        ax[i, j].imshow(test_images[k, 0].cpu().data.numpy(), cmap='gray')
+
+        ax[i, j].imshow(test_images[k, 0].cpu().data.numpy())
 
     label = 'Epoch {0}'.format(num_epoch)
     fig.text(0.5, 0.04, label, ha='center')
@@ -190,16 +210,19 @@ def show_result(num_epoch, show = False, save = False, path = 'result.png', isFi
 
 
 
+
 if __name__ == '__main__':
 
 
     # training
     batch_size = 128
     lr = 0.0002
-    train_epoch = 20
-    data_dir = 'chairs'
+    train_epoch = 120
+    data_dir = 'new_images'
+    dataset = "chairs"
+    model_dir = 'model_folder'
 
-
+    print(dataset)
     # Define the models
     G_model = net.generator(128)
     D_model = net.discriminator(128)
@@ -223,7 +246,7 @@ if __name__ == '__main__':
     logging.info("Loading the datasets...")
 
     # data_loader
-    train_loader = data_loader.fetch_dataloader(data_dir, batch_size)
+    train_loader = data_loader.fetch_dataloader(data_dir, batch_size, dataset)
     print('dataset length '+str(len(train_loader.dataset)))
 
     #for i in range(2800):
@@ -233,4 +256,4 @@ if __name__ == '__main__':
 
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(train_epoch))
-    train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch)
+    train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch, model_dir, restore_file=None)

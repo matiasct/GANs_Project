@@ -8,7 +8,10 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 import logging
 from tqdm import tqdm
-import model.net as net
+import model.netChairs as net
+from torchvision.transforms import ToPILImage
+to_img = ToPILImage()
+import numpy as np
 #import model.data_loader as data_loader
 #from evaluate import evaluate
 
@@ -32,10 +35,10 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
 
             # train discriminator D:
 
-            print(inputs_real)
+
             # define real and fake inputs and labels, convert to variables
             mini_batch = inputs_real.size()[0]
-            print(type(mini_batch))
+
             labels_real = torch.ones(mini_batch)
 
             labels_fake = torch.zeros(mini_batch)
@@ -50,7 +53,7 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
 
             # compute D_model with fake input from generator, and compute loss
             G_output = G_model(inputs_fake)
-            print(G_output)
+
             D_output = D_model(G_output).squeeze()
             D_model_fake_loss = loss_fn(D_output, labels_fake)
 
@@ -106,12 +109,12 @@ def train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, trai
     num_iter = 0
 
     # results save folder
-    if not os.path.isdir('LSUN_DCGAN_results'):
-        os.mkdir('LSUN_DCGAN_results')
-    if not os.path.isdir('LSUN_DCGAN_results/Random_results'):
-        os.mkdir('LSUN_DCGAN_results/Random_results')
-    if not os.path.isdir('LSUN_DCGAN_results/Fixed_results'):
-        os.mkdir('LSUN_DCGAN_results/Fixed_results')
+    if not os.path.isdir('CIFAR_results'):
+        os.mkdir('CIFAR_results')
+    if not os.path.isdir('CIFAR_results/Random_results'):
+        os.mkdir('CIFAR_results/Random_results')
+    if not os.path.isdir('CIFAR_results/Fixed_results'):
+        os.mkdir('CIFAR_results/Fixed_results')
 
     print(len(train_loader))
 
@@ -136,8 +139,8 @@ def train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, trai
 
 
         #save test pictures after every epoch:
-        p = 'LSUN_DCGAN_results/Random_results/LSUN_DCGAN_' + str(epoch + 1) + '.png'
-        fixed_p = 'LSUN_DCGAN_results/Fixed_results/LSUN_DCGAN_' + str(epoch + 1) + '.png'
+        p = 'CIFAR_results/Random_results/LSUN_DCGAN_' + str(epoch + 1) + '.png'
+        fixed_p = 'CIFAR_results/Fixed_results/LSUN_DCGAN_' + str(epoch + 1) + '.png'
         show_result((epoch+1), save=True, path=p, isFix=False)
         show_result((epoch+1), save=True, path=fixed_p, isFix=True)
         train_hist['D_model_losses'].append(torch.mean(torch.FloatTensor(D_model_losses)))
@@ -150,9 +153,9 @@ def train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, trai
 
     print("Avg per epoch ptime: %.2f, total %d epochs ptime: %.2f" % (torch.mean(torch.FloatTensor(train_hist['per_epoch_ptimes'])), train_epoch, total_ptime))
     print("Training finish!... save learned parameters")
-    torch.save(G_model.state_dict(), "LSUN_DCGAN_results/generator_param.pkl")
-    torch.save(D_model.state_dict(), "LSUN_DCGAN_results/discriminator_param.pkl")
-    with open('LSUN_DCGAN_results/train_hist.pkl', 'wb') as f:
+    torch.save(G_model.state_dict(), "CIFAR_results/generator_param.pkl")
+    torch.save(D_model.state_dict(), "CIFAR_results/discriminator_param.pkl")
+    with open('CIFAR_results/train_hist.pkl', 'wb') as f:
         pickle.dump(train_hist, f)
 
 
@@ -229,10 +232,16 @@ if __name__ == '__main__':
             transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
     ])
     train_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR('data', train=True, download=True, transform=transform),
+        datasets.MNIST('dataMNIST', train=True, download=True, transform=transform),
         batch_size=batch_size, shuffle=True)
 
-
+    image, _ = train_loader.dataset[10]
+    print(type(image))
+    image = np.asarray(image)
+    print(image)
+    plt.imshow(image)
+    #image2 = to_img(image)
+    #image2.show()
 
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(train_epoch))

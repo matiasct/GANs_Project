@@ -39,7 +39,8 @@ class generator(nn.Module):
         x = F.relu(self.deconv2_bn(self.deconv2(x)))
         x = F.relu(self.deconv3_bn(self.deconv3(x)))
         x = F.relu(self.deconv4_bn(self.deconv4(x)))
-        x = F.tanh(self.deconv5(x))
+        x = self.deconv5(x)
+        #x = F.tanh(self.deconv5(x))
 
         return x
 
