@@ -4,6 +4,8 @@ import torch
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, transforms
+
+import numpy as np
 #import torchsample as ts
 
 # borrowed from http://pytorch.org/tutorials/advanced/neural_style_tutorial.html
@@ -25,7 +27,6 @@ class ChairsDataset(Dataset):
         self.filenames = os.listdir(data_dir)
         self.filenames = [os.path.join(data_dir, f) for f in self.filenames]
 
-        self.labels = [1 for filename in self.filenames]
         self.transform = transform
 
     def __len__(self):
@@ -44,9 +45,8 @@ class ChairsDataset(Dataset):
             label: (int) corresponding label of image
         """
         image = Image.open(self.filenames[idx]) # PIL image
-
         image = self.transform(image)
-        return image, self.labels[idx]
+        return image
 
 
 def fetch_dataloader(data_dir, batch_size, dataset):

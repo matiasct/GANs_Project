@@ -16,7 +16,7 @@ import numpy as np
 from PIL import Image
 #from evaluate import evaluate
 import scipy.misc
-
+import torch.nn.functional as F
 
 
 def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics):
@@ -28,7 +28,7 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
     # Use tqdm for progress bar
     with tqdm(total=len(train_loader)) as t:
 
-        for inputs_real, _ in train_loader:
+        for inputs_real in train_loader:
 
             # move to GPU if available
 
@@ -40,8 +40,10 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
             labels_real = torch.ones(mini_batch)
 
             labels_fake = torch.zeros(mini_batch)
-            inputs_fake = torch.randn((mini_batch, 100)).view(-1, 100, 1, 1)
+            #inputs_fake = torch.randn((mini_batch, 100)).view(-1, 100, 1, 1)
 
+            inputs_fake = torch.FloatTensor(mini_batch, 100, 1, 1).normal_(0, 1)
+            #print(inputs_fake)
 
             inputs_real, labels_real, inputs_fake, labels_fake = Variable(inputs_real), Variable(labels_real),Variable(inputs_fake), Variable(labels_fake)
 
@@ -113,12 +115,12 @@ def train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, trai
     num_iter = 0
 
     # results save folder
-    if not os.path.isdir('Chairs1_results'):
-        os.mkdir('Chairs1_results')
-    if not os.path.isdir('Chairs1_results/Random_results'):
-        os.mkdir('Chairs1_results/Random_results')
-    if not os.path.isdir('Chairs1_results/Fixed_results'):
-        os.mkdir('Chairs1_results/Fixed_results')
+    if not os.path.isdir('Chairs_results'):
+        os.mkdir('Chairs_results')
+    if not os.path.isdir('Chairs_results/Random_results'):
+        os.mkdir('Chairs_results/Random_results')
+    if not os.path.isdir('Chairs_results/Fixed_results'):
+        os.mkdir('Chairs_results/Fixed_results')
 
     print('length dataloader ' + str(len(train_loader)))
 
@@ -165,9 +167,9 @@ def train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, trai
 
     print("Avg per epoch ptime: %.2f, total %d epochs ptime: %.2f" % (torch.mean(torch.FloatTensor(train_hist['per_epoch_ptimes'])), train_epoch, total_ptime))
     print("Training finish!... save learned parameters")
-    torch.save(G_model.state_dict(), "Chairs1_results/generator_param.pkl")
-    torch.save(D_model.state_dict(), "Chairs1_results/discriminator_param.pkl")
-    with open('Chairs1_results/train_hist.pkl', 'wb') as f:
+    torch.save(G_model.state_dict(), "Chairs_results/generator_param.pkl")
+    torch.save(D_model.state_dict(), "Chairs_results/discriminator_param.pkl")
+    with open('Chairs_results/train_hist.pkl', 'wb') as f:
         pickle.dump(train_hist, f)
 
 
@@ -185,7 +187,7 @@ def show_result(num_epoch, show = False, save = False, path = 'result.png', isFi
     else:
         test_images = G_model(z_)
     G_model.train()
-
+    print(test_images.size())
     size_figure_grid = 5
     fig, ax = plt.subplots(size_figure_grid, size_figure_grid, figsize=(5, 5))
     for i, j in itertools.product(range(size_figure_grid), range(size_figure_grid)):
@@ -195,9 +197,13 @@ def show_result(num_epoch, show = False, save = False, path = 'result.png', isFi
     for k in range(5*5):
         i = k // 5
         j = k % 5
-        ax[i, j].cla()
-
-        ax[i, j].imshow(test_images[k, 0].cpu().data.numpy())
+        #ax[i, j].cla()
+        print(test_images[k].shape)
+        plot_image = test_images[k].data.cpu().numpy()
+        print(np.shape(plot_image))
+        plot_image = (plot_image - plot_image.min())/(plot_image.max() - plot_image.min())
+        plot_image = np.transpose(plot_image,(1, 2, 0))
+        ax[i, j].imshow(plot_image)
 
     label = 'Epoch {0}'.format(num_epoch)
     fig.text(0.5, 0.04, label, ha='center')
@@ -210,14 +216,12 @@ def show_result(num_epoch, show = False, save = False, path = 'result.png', isFi
 
 
 
-
 if __name__ == '__main__':
-
 
     # training
     batch_size = 128
     lr = 0.0002
-    train_epoch = 120
+    train_epoch = 200
     data_dir = 'new_images'
     dataset = "chairs"
     model_dir = 'model_folder'
@@ -249,9 +253,30 @@ if __name__ == '__main__':
     train_loader = data_loader.fetch_dataloader(data_dir, batch_size, dataset)
     print('dataset length '+str(len(train_loader.dataset)))
 
-    #for i in range(2800):
-      #  print(type(train_loader.dataset[i]))
-       # print(train_loader.dataset[i])
+    ''' try to plot images directly from files and also from pythorch dataset
+    
+    filenames = os.listdir(data_dir)
+    filenames = [os.path.join(data_dir, f) for f in filenames]
+    imageX = Image.open(filenames[8])
+    imageX = np.asarray(imageX)
+    #print(imageX)
+    print(type(imageX))
+    print(np.shape(imageX))
+    plt.imshow(imageX)
+    plt.show()
+    
+    image = train_loader.dataset[8]
+    print(type(image))
+    image = image.numpy()
+    print(image)
+    print("image", type(image))
+    image = (image - image.min())/(image.max() - image.min())
+    image = np.transpose(image,(1,2,0))
+    #print(image)
+    #print(np.shape(image))
+    plt.imshow(image)
+    plt.show()
+    '''
 
 
     # Train the model

@@ -8,7 +8,7 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 import logging
 from tqdm import tqdm
-import model.netChairs as net
+import model.net as net
 from torchvision.transforms import ToPILImage
 to_img = ToPILImage()
 import numpy as np
@@ -86,6 +86,8 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
 
             print("D loss: " + str(D_model_train_loss.data[0]))
             print("G loss: " + str(G_model_train_loss.data[0]))
+
+            show_result((1), save=True, path='Chairs1_results/Random_results/LSUN_DCGAN_' + str(1) + '.png', isFix=False)
 
             t.update()
 
@@ -183,7 +185,10 @@ def show_result(num_epoch, show = False, save = False, path = 'result.png', isFi
         i = k // 5
         j = k % 5
         ax[i, j].cla()
-        ax[i, j].imshow(test_images[k, 0].cpu().data.numpy(), cmap='gray')
+        print(type(test_images[k, 0]))
+        print(test_images[k, 0])
+        print(np.shape(test_images[k, 0].cpu().data.numpy()))
+        ax[i, j].imshow(test_images[k, 0].cpu().data.numpy())
 
     label = 'Epoch {0}'.format(num_epoch)
     fig.text(0.5, 0.04, label, ha='center')
@@ -235,6 +240,7 @@ if __name__ == '__main__':
         datasets.MNIST('dataMNIST', train=True, download=True, transform=transform),
         batch_size=batch_size, shuffle=True)
 
+    '''
     image, _ = train_loader.dataset[10]
     print(type(image))
     image = np.asarray(image)
@@ -242,7 +248,7 @@ if __name__ == '__main__':
     plt.imshow(image)
     #image2 = to_img(image)
     #image2.show()
-
+    '''
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(train_epoch))
     train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch)
