@@ -19,7 +19,9 @@ import scipy.misc
 import torch.nn.functional as F
 
 
-def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics):
+
+
+def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, param_cuda):
 
     # set models to training mode
     #G_model.train()
@@ -31,7 +33,8 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
         for inputs_real in train_loader:
 
             # move to GPU if available
-
+            if param_cuda:
+                train_batch = train_batch.cuda(async=True)
 
             # train discriminator D:
 
@@ -47,14 +50,12 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
 
             inputs_real, labels_real, inputs_fake, labels_fake = Variable(inputs_real), Variable(labels_real),Variable(inputs_fake), Variable(labels_fake)
 
-
             # compute D_model with real input, and compute loss
             D_output = D_model(inputs_real).squeeze()
             D_model_real_loss = loss_fn(D_output, labels_real)
 
             # compute D_model with fake input from generator, and compute loss
             G_output = G_model(inputs_fake)
-
             D_output = D_model(G_output).squeeze()
             D_model_fake_loss = loss_fn(D_output, labels_fake)
 
@@ -68,7 +69,6 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
 
 
             # train generator G:
-
 
             #create new fake inputs, convert to variables
             inputs_fake = torch.randn((mini_batch, 100)).view(-1, 100, 1, 1)
@@ -93,7 +93,7 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
         return D_model_train_loss.data[0], G_model_train_loss.data[0]
 
 
-def train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch, model_dir, restore_file=None):
+def train_and_evaluate(dataset, G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch, model_dir, restore_file=None):
     """Train the model and evaluate every epoch"""
 
     # reload weights from restore_file if specified
@@ -102,9 +102,10 @@ def train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, trai
         logging.info("Restoring parameters from {}".format(restore_path))
         utils.load_checkpoint(restore_path, D_model, G_model, D_optimizer, G_optimizer)
 
-    print('training start!')
+    # check training starting time
     start_time = time.time()
 
+    # here we are going to save the losses.
     D_model_losses = []
     G_model_losses = []
     train_hist = {}
@@ -112,15 +113,15 @@ def train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, trai
     train_hist['G_model_losses'] = []
     train_hist['per_epoch_ptimes'] = []
     train_hist['total_ptime'] = []
-    num_iter = 0
 
-    # results save folder
-    if not os.path.isdir('Chairs_results'):
-        os.mkdir('Chairs_results')
-    if not os.path.isdir('Chairs_results/Random_results'):
-        os.mkdir('Chairs_results/Random_results')
-    if not os.path.isdir('Chairs_results/Fixed_results'):
-        os.mkdir('Chairs_results/Fixed_results')
+    # folder for saving the images
+    if not os.path.isdir(dataset + '_results'):
+        os.mkdir(dataset + '_results')
+    if not os.path.isdir(dataset + '_results/Random_results'):
+        os.mkdir(dataset + '_results/Random_results')
+    if not os.path.isdir(dataset + '_results/Fixed_results'):
+        os.mkdir(dataset + '_results/Fixed_results')
+
 
     print('length dataloader ' + str(len(train_loader)))
 
@@ -131,7 +132,7 @@ def train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, trai
         epoch_start_time = time.time()
 
         # compute number of batches in one epoch (one full pass over the training set)
-        D_model_loss, G_model_loss = train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics)
+        D_model_loss, G_model_loss = train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, param_cuda)
         D_model_losses.append(D_model_loss)
         G_model_losses.append(G_model_loss)
 
@@ -151,12 +152,13 @@ def train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, trai
                                is_best=False,
                                checkpoint = model_dir)
 
-
         #save test pictures after every epoch:
-        p = 'Chairs1_results/Random_results/LSUN_DCGAN_' + str(epoch + 1) + '.png'
-        fixed_p = 'Chairs1_results/Fixed_results/LSUN_DCGAN_' + str(epoch + 1) + '.png'
+        p = dataset + '_results/Random_results/pretrain_' + str(epoch + 1) + '.png'
+        fixed_p = dataset + '_results/Fixed_results/pretrain_' + str(epoch + 1) + '.png'
         show_result((epoch+1), save=True, path=p, isFix=False)
         show_result((epoch+1), save=True, path=fixed_p, isFix=True)
+
+        # add losses to the training history
         train_hist['D_model_losses'].append(torch.mean(torch.FloatTensor(D_model_losses)))
         train_hist['G_model_losses'].append(torch.mean(torch.FloatTensor(G_model_losses)))
         train_hist['per_epoch_ptimes'].append(per_epoch_ptime)
@@ -167,11 +169,14 @@ def train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, trai
 
     print("Avg per epoch ptime: %.2f, total %d epochs ptime: %.2f" % (torch.mean(torch.FloatTensor(train_hist['per_epoch_ptimes'])), train_epoch, total_ptime))
     print("Training finish!... save learned parameters")
-    torch.save(G_model.state_dict(), "Chairs_results/generator_param.pkl")
-    torch.save(D_model.state_dict(), "Chairs_results/discriminator_param.pkl")
-    with open('Chairs_results/train_hist.pkl', 'wb') as f:
-        pickle.dump(train_hist, f)
+    torch.save(G_model.state_dict(), dataset + "_results/generator_param.pkl")
+    torch.save(D_model.state_dict(), dataset + "_results/discriminator_param.pkl")
 
+    # save training history
+    with open(dataset + '_results/train_hist.pkl', 'wb') as f:
+        pickle.dump(train_hist, f)
+    # plot training history
+    utils.show_train_hist(train_hist, save=True, path=dataset + '_results/_train_hist.png')
 
 def show_result(num_epoch, show = False, save = False, path = 'result.png', isFix=False):
 
@@ -187,7 +192,6 @@ def show_result(num_epoch, show = False, save = False, path = 'result.png', isFi
     else:
         test_images = G_model(z_)
     G_model.train()
-    print(test_images.size())
     size_figure_grid = 5
     fig, ax = plt.subplots(size_figure_grid, size_figure_grid, figsize=(5, 5))
     for i, j in itertools.product(range(size_figure_grid), range(size_figure_grid)):
@@ -198,9 +202,7 @@ def show_result(num_epoch, show = False, save = False, path = 'result.png', isFi
         i = k // 5
         j = k % 5
         #ax[i, j].cla()
-        print(test_images[k].shape)
         plot_image = test_images[k].data.cpu().numpy()
-        print(np.shape(plot_image))
         plot_image = (plot_image - plot_image.min())/(plot_image.max() - plot_image.min())
         plot_image = np.transpose(plot_image,(1, 2, 0))
         ax[i, j].imshow(plot_image)
@@ -222,14 +224,19 @@ if __name__ == '__main__':
     batch_size = 128
     lr = 0.0002
     train_epoch = 200
-    data_dir = 'new_images'
-    dataset = "chairs"
-    model_dir = 'model_folder'
+    #data_dir = 'new_images'
+    #dataset = "Chairs"
+    #model_dir = 'model_folder'
+    data_dir = 'Imagenet'
+    dataset = 'Imagenet'
+    model_dir = 'imagenet_folder'
 
-    print(dataset)
+    # use GPU if available
+    param_cuda = torch.cuda.is_available()
+
     # Define the models
-    G_model = net.generator(128)
-    D_model = net.discriminator(128)
+    G_model = net.generator(128).cuda() if param_cuda else net.generator(128)
+    D_model = net.discriminator(128).cuda() if param_cuda else net.discriminator(128)
 
     #Initialize weights
     G_model.weight_init(mean=0.0, std=0.02)
@@ -245,6 +252,9 @@ if __name__ == '__main__':
     # fetch loss function and metrics
     loss_fn = net.loss_fn
     metrics = net.metrics
+
+    # Set the logger
+    utils.set_logger(os.path.join(model_dir, 'train.log'))
 
     # Create the input data pipeline
     logging.info("Loading the datasets...")
@@ -265,10 +275,11 @@ if __name__ == '__main__':
     plt.imshow(imageX)
     plt.show()
     
-    image = train_loader.dataset[8]
+    image = train_loader.dataset[500]
     print(type(image))
     image = image.numpy()
     print(image)
+    print(np.shape(image))
     print("image", type(image))
     image = (image - image.min())/(image.max() - image.min())
     image = np.transpose(image,(1,2,0))
@@ -278,7 +289,14 @@ if __name__ == '__main__':
     plt.show()
     '''
 
+    '''
+    train_hist = {}
+    with open('Chairs_results/train_hist.pkl', 'rb') as input:
+        train_hist = pickle.load(input)
+    print(train_hist.keys())
+    show_train_hist(train_hist, save=True, path='Chairs_results/_train_hist.png')
+    '''
 
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(train_epoch))
-    train_and_evaluate(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch, model_dir, restore_file=None)
+    train_and_evaluate(dataset, G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch, model_dir, restore_file=None)
