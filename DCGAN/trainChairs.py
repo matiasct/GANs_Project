@@ -7,8 +7,8 @@ from torch.autograd import Variable
 import logging
 from tqdm import tqdm
 import utils
-import model.netChairs as net
-import model.data_loader as data_loader
+from model import netChairs as net
+from model import data_loader as data_loader
 import numpy as np
 from PIL import Image
 
