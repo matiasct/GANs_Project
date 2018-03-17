@@ -1,6 +1,4 @@
 import os, time
-import matplotlib.pyplot as plt
-import itertools
 import pickle
 import torch
 import torch.optim as optim
@@ -11,21 +9,16 @@ from tqdm import tqdm
 import utils
 import model.netChairs as net
 import model.data_loader as data_loader
-import matplotlib.colors as colors
 import numpy as np
 from PIL import Image
-#from evaluate import evaluate
-import scipy.misc
-import torch.nn.functional as F
-
 
 
 
 def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, param_cuda):
 
     # set models to training mode
-    #G_model.train()
-    #D_model.train()
+    G_model.train()
+    D_model.train()
 
     # Use tqdm for progress bar
     with tqdm(total=len(train_loader)) as t:
@@ -66,7 +59,6 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
             D_model.zero_grad()
             D_model_train_loss.backward()
             D_optimizer.step()
-
 
             # train generator G:
 
@@ -155,8 +147,8 @@ def train_and_evaluate(dataset, G_model, D_model, G_optimizer, D_optimizer, loss
         #save test pictures after every epoch:
         p = dataset + '_results/Random_results/pretrain_' + str(epoch + 1) + '.png'
         fixed_p = dataset + '_results/Fixed_results/pretrain_' + str(epoch + 1) + '.png'
-        show_result((epoch+1), save=True, path=p, isFix=False)
-        show_result((epoch+1), save=True, path=fixed_p, isFix=True)
+        utils.show_result(G_model, (epoch+1), save=True, path=p, isFix=False)
+        utils.show_result(G_model, (epoch+1), save=True, path=fixed_p, isFix=True)
 
         # add losses to the training history
         train_hist['D_model_losses'].append(torch.mean(torch.FloatTensor(D_model_losses)))
@@ -178,52 +170,13 @@ def train_and_evaluate(dataset, G_model, D_model, G_optimizer, D_optimizer, loss
     # plot training history
     utils.show_train_hist(train_hist, save=True, path=dataset + '_results/_train_hist.png')
 
-def show_result(num_epoch, show = False, save = False, path = 'result.png', isFix=False):
-
-    fixed_z_ = torch.randn((5 * 5, 100)).view(-1, 100, 1, 1)    # fixed noise
-    fixed_z_ = Variable(fixed_z_, volatile=True)
-
-    z_ = torch.randn((5*5, 100)).view(-1, 100, 1, 1)
-    z_ = Variable(z_, volatile=True)
-
-    G_model.eval()
-    if isFix:
-        test_images = G_model(fixed_z_)
-    else:
-        test_images = G_model(z_)
-    G_model.train()
-    size_figure_grid = 5
-    fig, ax = plt.subplots(size_figure_grid, size_figure_grid, figsize=(5, 5))
-    for i, j in itertools.product(range(size_figure_grid), range(size_figure_grid)):
-        ax[i, j].get_xaxis().set_visible(False)
-        ax[i, j].get_yaxis().set_visible(False)
-
-    for k in range(5*5):
-        i = k // 5
-        j = k % 5
-        #ax[i, j].cla()
-        plot_image = test_images[k].data.cpu().numpy()
-        plot_image = (plot_image - plot_image.min())/(plot_image.max() - plot_image.min())
-        plot_image = np.transpose(plot_image,(1, 2, 0))
-        ax[i, j].imshow(plot_image)
-
-    label = 'Epoch {0}'.format(num_epoch)
-    fig.text(0.5, 0.04, label, ha='center')
-    plt.savefig(path)
-
-    if show:
-        plt.show()
-    else:
-        plt.close()
-
-
 
 if __name__ == '__main__':
 
     # training
     batch_size = 128
     lr = 0.0002
-    train_epoch = 200
+    train_epoch = 2
     #data_dir = 'new_images'
     #dataset = "Chairs"
     #model_dir = 'model_folder'
