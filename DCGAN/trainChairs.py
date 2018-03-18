@@ -176,7 +176,7 @@ if __name__ == '__main__':
     # training
     batch_size = 128
     lr = 0.0002
-    train_epoch = 2
+    train_epoch = 5
     #data_dir = 'new_images'
     #dataset = "Chairs"
     #model_dir = 'model_folder'
