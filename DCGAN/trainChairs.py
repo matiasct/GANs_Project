@@ -63,6 +63,7 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
 
             #create new fake inputs, convert to variables
             inputs_fake = torch.randn((mini_batch, 100)).view(-1, 100, 1, 1)
+            inputs_fake = inputs_fake.cuda() if param_cuda else inputs_fake
             inputs_fake = Variable(inputs_fake)
 
             # compute D_model with fake input from generator, and compute loss
