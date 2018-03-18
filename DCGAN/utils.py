@@ -183,7 +183,7 @@ def show_result(param_cuda, G_model, num_epoch, show = False, save=False, path =
         test_images = G_model(fixed_z_)
     else:
         test_images = G_model(z_)
-    G_model.train()
+ #   G_model.train()
     size_figure_grid = 5
     fig, ax = plt.subplots(size_figure_grid, size_figure_grid, figsize=(5, 5))
     for i, j in itertools.product(range(size_figure_grid), range(size_figure_grid)):

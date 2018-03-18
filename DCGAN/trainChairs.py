@@ -147,13 +147,14 @@ def train_and_evaluate(param_cuda, dataset, G_model, D_model, G_optimizer, D_opt
         #save test pictures after every epoch:
         p = dataset + '_results/Random_results/pretrain_' + str(epoch + 1) + '.png'
         fixed_p = dataset + '_results/Fixed_results/pretrain_' + str(epoch + 1) + '.png'
-        utils.show_result(G_model, (epoch+1), save=True, path=p, isFix=False)
-        utils.show_result(G_model, (epoch+1), save=True, path=fixed_p, isFix=True)
+        utils.show_result(param_cuda, G_model, (epoch+1), save=True, path=p, isFix=False)
+        utils.show_result(param_cuda, G_model, (epoch+1), save=True, path=fixed_p, isFix=True)
 
         # add losses to the training history
         train_hist['D_model_losses'].append(torch.mean(torch.FloatTensor(D_model_losses)))
         train_hist['G_model_losses'].append(torch.mean(torch.FloatTensor(G_model_losses)))
         train_hist['per_epoch_ptimes'].append(per_epoch_ptime)
+
 
     end_time = time.time()
     total_ptime = end_time - start_time
@@ -187,6 +188,9 @@ if __name__ == '__main__':
     # use GPU if available
     param_cuda = torch.cuda.is_available()
 
+    if param_cuda:
+        print('Im using cuda')
+
     # Define the models
     G_model = net.generator(128).cuda() if param_cuda else net.generator(128)
     D_model = net.discriminator(128).cuda() if param_cuda else net.discriminator(128)
@@ -195,15 +199,12 @@ if __name__ == '__main__':
     G_model.weight_init(mean=0.0, std=0.02)
     D_model.weight_init(mean=0.0, std=0.02)
 
-    #G_model.cuda()
-    #D_model.cuda()
-
     #Define optimizers
     G_optimizer = optim.Adam(G_model.parameters(), lr=lr, betas=(0.5, 0.999))
     D_optimizer = optim.Adam(D_model.parameters(), lr=lr, betas=(0.5, 0.999))
 
     # fetch loss function and metrics
-    loss_fn = net.loss_fn.cuda() if param_cuda else net.loss_fn
+    loss_fn = net.loss_fn
     metrics = net.metrics
 
     # Set the logger
