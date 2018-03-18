@@ -98,4 +98,4 @@ if __name__ == '__main__':
     train_loader = data_loader.fetch_dataloader(data_dir, batch_size, dataset)
 
     print ("Calculating Inception Score...")
-    print (inception_score(train_loader, cuda=False, batch_size=32, resize=True, splits=10))
+    print (inception_score(train_loader, cuda=True, batch_size=32, resize=True, splits=10))
