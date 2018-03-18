@@ -147,8 +147,8 @@ def train_and_evaluate(param_cuda, dataset, G_model, D_model, G_optimizer, D_opt
         #save test pictures after every epoch:
         p = dataset + '_results/Random_results/pretrain_' + str(epoch + 1) + '.png'
         fixed_p = dataset + '_results/Fixed_results/pretrain_' + str(epoch + 1) + '.png'
-        utils.show_result(G_model, (epoch+1), save=True, path=p, isFix=False)
-        utils.show_result(G_model, (epoch+1), save=True, path=fixed_p, isFix=True)
+        utils.show_result(param_cuda, G_model, (epoch+1), save=True, path=p, isFix=False)
+        utils.show_result(param_cuda, G_model, (epoch+1), save=True, path=fixed_p, isFix=True)
 
         # add losses to the training history
         train_hist['D_model_losses'].append(torch.mean(torch.FloatTensor(D_model_losses)))
@@ -176,7 +176,7 @@ if __name__ == '__main__':
     # training
     batch_size = 128
     lr = 0.0002
-    train_epoch = 2
+    train_epoch = 5
     #data_dir = 'new_images'
     #dataset = "Chairs"
     #model_dir = 'model_folder'
@@ -186,6 +186,9 @@ if __name__ == '__main__':
 
     # use GPU if available
     param_cuda = torch.cuda.is_available()
+
+    if param_cuda:
+        print('Im using cuda')
 
     # Define the models
     G_model = net.generator(128).cuda() if param_cuda else net.generator(128)
@@ -203,7 +206,7 @@ if __name__ == '__main__':
     D_optimizer = optim.Adam(D_model.parameters(), lr=lr, betas=(0.5, 0.999))
 
     # fetch loss function and metrics
-    loss_fn = net.loss_fn.cuda() if param_cuda else net.loss_fn
+    loss_fn = net.loss_fn
     metrics = net.metrics
 
     # Set the logger

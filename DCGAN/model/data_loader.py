@@ -68,7 +68,7 @@ class ImagenetDataset(Dataset):
         base_folder = data_dir
 
         train_list = []
-        for i in range(1,2):
+        for i in range(1,9):
             name = 'train_data_batch_'+str(i)
             train_list.append(name)
 
