@@ -155,6 +155,7 @@ def train_and_evaluate(param_cuda, dataset, G_model, D_model, G_optimizer, D_opt
         train_hist['G_model_losses'].append(torch.mean(torch.FloatTensor(G_model_losses)))
         train_hist['per_epoch_ptimes'].append(per_epoch_ptime)
 
+
     end_time = time.time()
     total_ptime = end_time - start_time
     train_hist['total_ptime'].append(total_ptime)
@@ -197,9 +198,6 @@ if __name__ == '__main__':
     #Initialize weights
     G_model.weight_init(mean=0.0, std=0.02)
     D_model.weight_init(mean=0.0, std=0.02)
-
-    #G_model.cuda()
-    #D_model.cuda()
 
     #Define optimizers
     G_optimizer = optim.Adam(G_model.parameters(), lr=lr, betas=(0.5, 0.999))
