@@ -26,19 +26,18 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
         for inputs_real in train_loader:
 
             # move to GPU if available
-            if param_cuda:
-                train_batch = train_batch.cuda(async=True)
+            inputs_real = inputs_real.cuda(async=True) if param_cuda else inputs_real
 
             # train discriminator D:
 
             # define real and fake inputs and labels, convert to variables
             mini_batch = inputs_real.size()[0]
-            labels_real = torch.ones(mini_batch)
-
-            labels_fake = torch.zeros(mini_batch)
+            labels_real = torch.ones(mini_batch).cuda() if param_cuda else torch.ones(mini_batch)
+            labels_fake = torch.zeros(mini_batch).cuda() if param_cuda else torch.zeros(mini_batch)
             #inputs_fake = torch.randn((mini_batch, 100)).view(-1, 100, 1, 1)
-
             inputs_fake = torch.FloatTensor(mini_batch, 100, 1, 1).normal_(0, 1)
+            inputs_fake = inputs_fake.cuda() if param_cuda else inputs_fake
+
             #print(inputs_fake)
 
             inputs_real, labels_real, inputs_fake, labels_fake = Variable(inputs_real), Variable(labels_real),Variable(inputs_fake), Variable(labels_fake)
@@ -85,7 +84,7 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
         return D_model_train_loss.data[0], G_model_train_loss.data[0]
 
 
-def train_and_evaluate(dataset, G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch, model_dir, restore_file=None):
+def train_and_evaluate(param_cuda, dataset, G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch, model_dir, restore_file=None):
     """Train the model and evaluate every epoch"""
 
     # reload weights from restore_file if specified
@@ -203,7 +202,7 @@ if __name__ == '__main__':
     D_optimizer = optim.Adam(D_model.parameters(), lr=lr, betas=(0.5, 0.999))
 
     # fetch loss function and metrics
-    loss_fn = net.loss_fn
+    loss_fn = net.loss_fn.cuda() if param_cuda else net.loss_fn
     metrics = net.metrics
 
     # Set the logger
@@ -252,4 +251,4 @@ if __name__ == '__main__':
 
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(train_epoch))
-    train_and_evaluate(dataset, G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch, model_dir, restore_file=None)
+    train_and_evaluate(param_cuda, dataset, G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch, model_dir, restore_file=None)
