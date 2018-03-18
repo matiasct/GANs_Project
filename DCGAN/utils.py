@@ -168,12 +168,14 @@ def show_train_hist(hist, show = False, save = False, path = 'Train_hist.png'):
         plt.close()
 
 
-def show_result(G_model, num_epoch, show = False, save=False, path = 'result.png', isFix=False):
+def show_result(param_cuda, G_model, num_epoch, show = False, save=False, path = 'result.png', isFix=False):
 
     fixed_z_ = torch.randn((5 * 5, 100)).view(-1, 100, 1, 1)    # fixed noise
+    fixed_z_ = fixed_z_.cuda() if param_cuda else fixed_z_
     fixed_z_ = Variable(fixed_z_, volatile=False)
 
     z_ = torch.randn((5*5, 100)).view(-1, 100, 1, 1)
+    z_ = z_.cuda() if param_cuda else z_
     z_ = Variable(z_, volatile=True)
 
     G_model.eval()
