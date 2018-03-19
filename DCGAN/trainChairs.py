@@ -87,6 +87,7 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
             print("D loss: " + str(D_model_train_loss.data[0]))
             print("G loss: " + str(G_model_train_loss.data[0]))
 
+
             # add in tensorboardX
             writer.add_scalar('Loss/D', D_model_train_loss.data[0], train_epoch)
             writer.add_scalar('Loss/G', G_model_train_loss.data[0], train_epoch)
@@ -158,10 +159,8 @@ def train_and_evaluate(param_cuda, dataset, G_model, D_model, G_optimizer, D_opt
         epoch_start_time = time.time()
 
         # compute number of batches in one epoch (one full pass over the training set)
-        train_hist = train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, param_cuda, train_hist, train_epoch, model_dir)
 
-        #D_model_losses.append(D_model_loss)
-        #G_model_losses.append(G_model_loss)
+        train_hist = train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, param_cuda, train_hist, train_epoch, model_dir)
 
         epoch_end_time = time.time()
         per_epoch_ptime = epoch_end_time - epoch_start_time
