@@ -9,14 +9,14 @@ from model import data_loader as data_loader
 import numpy as np
 from scipy.stats import entropy
 
-def inception_score(dataloader, cuda=True, batch_size=32, resize=False, splits=1):
+def inception_score(imgs, cuda=False, batch_size=32, resize=False, splits=1):
     """Computes the inception score of the generated images imgs
     imgs -- Torch dataset of (3xHxW) numpy images normalized in the range [-1, 1]
     cuda -- whether or not to run on GPU
     batch_size -- batch size for feeding into Inception v3
     splits -- number of splits
     """
-    N = len(dataloader)
+    N = len(imgs)
 
     assert batch_size > 0
     assert N > batch_size
@@ -24,13 +24,15 @@ def inception_score(dataloader, cuda=True, batch_size=32, resize=False, splits=1
     # Set up dtype
     if cuda:
         dtype = torch.cuda.FloatTensor
+        print('Im using cuda')
     else:
         if torch.cuda.is_available():
             print("WARNING: You have a CUDA device, so you should probably set cuda=True")
+        print('Im not using cuda')
         dtype = torch.FloatTensor
 
     # Set up dataloader
-    #dataloader = torch.utils.data.DataLoader(imgs, batch_size=batch_size)
+    dataloader = torch.utils.data.DataLoader(imgs, batch_size=batch_size)
 
     # Load inception model
     inception_model = inception_v3(pretrained=True, transform_input=False).type(dtype)
@@ -46,11 +48,11 @@ def inception_score(dataloader, cuda=True, batch_size=32, resize=False, splits=1
     preds = np.zeros((N, 1000))
 
     for i, batch in enumerate(dataloader, 0):
+
         batch = batch.type(dtype)
         batchv = Variable(batch)
         batch_size_i = batch.size()[0]
-        print(batch_size_i)
-        print()
+        print(str(i)+'/'+str(len(dataloader)))
 
         preds[i*batch_size:i*batch_size + batch_size_i] = get_pred(batchv)
 
@@ -68,9 +70,11 @@ def inception_score(dataloader, cuda=True, batch_size=32, resize=False, splits=1
 
     return np.mean(split_scores), np.std(split_scores)
 
+
+
 if __name__ == '__main__':
 
-    '''
+
     class IgnoreLabelDataset(torch.utils.data.Dataset):
         def __init__(self, orig):
             self.orig = orig
@@ -84,6 +88,8 @@ if __name__ == '__main__':
     import torchvision.datasets as dset
     import torchvision.transforms as transforms
 
+
+
     cifar = dset.CIFAR10(root='data/', download=True,
                              transform=transforms.Compose([
                                  transforms.Scale(32),
@@ -93,11 +99,18 @@ if __name__ == '__main__':
     )
 
     IgnoreLabelDataset(cifar)
-    '''
+
     data_dir = 'Imagenet'
-    dataset = 'Imagenet'
+    dataset = 'cifar'
     batch_size = 128
-    train_loader = data_loader.fetch_dataloader(data_dir, batch_size, dataset)
+    #train_loader = data_loader.fetch_dataloader(data_dir, batch_size, dataset)
+
+    train_transformer = transforms.Compose([
+            transforms.Resize((64,64)),        # resize the image to 64x64 (remove if images are already 64x64)
+            transforms.RandomHorizontalFlip(),   # randomly flip image horizontally
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])  # transform it into a torch tensor
+
 
     print ("Calculating Inception Score...")
-    print (inception_score(train_loader, cuda=True, batch_size=32, resize=True, splits=10))
+    print (inception_score(data_loader.ImagenetDataset(data_dir, train_transformer), cuda=False, batch_size=32, resize=True, splits=10))
