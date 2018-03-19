@@ -9,21 +9,25 @@ from tqdm import tqdm
 import utils
 from model import netChairs as net
 from model import data_loader as data_loader
+from tensorboardX import SummaryWriter
 import numpy as np
 from PIL import Image
 
 
 
-def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, param_cuda):
+def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, param_cuda, train_hist, train_epoch, model_dir):
 
     # set models to training mode
     G_model.train()
     D_model.train()
 
+    D_model_losses = []
+    G_model_losses = []
+
     # Use tqdm for progress bar
     with tqdm(total=len(train_loader)) as t:
 
-        for inputs_real in train_loader:
+        for i, inputs_real in enumerate(train_loader):
 
             # move to GPU if available
             inputs_real = inputs_real.cuda(async=True) if param_cuda else inputs_real
@@ -76,13 +80,41 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
             G_model_train_loss.backward()
             G_optimizer.step()
 
+            # add losses to training history
+            D_model_losses.append(D_model_train_loss.data[0])
+            G_model_losses.append(G_model_train_loss.data[0])
+
             print("D loss: " + str(D_model_train_loss.data[0]))
             print("G loss: " + str(G_model_train_loss.data[0]))
 
+            # add in tensorboardX
+            writer.add_scalar('Loss/D', D_model_train_loss.data[0], train_epoch)
+            writer.add_scalar('Loss/G', G_model_train_loss.data[0], train_epoch)
+
+            train_hist['D_model_losses'].append(D_model_train_loss.data[0])
+            train_hist['G_model_losses'].append(G_model_train_loss.data[0])
+
+            # Save weights
+            if i%100 == 0:
+                utils.save_checkpoint({'epoch': train_epoch + 1,
+                               'D_model_state_dict': D_model.state_dict(),
+                               'G_model_state_dict': G_model.state_dict(),
+                               'D_optim_dict': D_optimizer.state_dict(),
+                               'G_optim_dict': G_optimizer.state_dict()},
+                               is_best=False,
+                               checkpoint = model_dir)
+
             t.update()
 
-        #return actual losses
-        return D_model_train_loss.data[0], G_model_train_loss.data[0]
+        train_hist['D_model_mean_losses'].append(torch.mean(torch.FloatTensor(D_model_losses)))
+        train_hist['G_model_mean_losses'].append(torch.mean(torch.FloatTensor(G_model_losses)))
+
+
+
+        # return actual losses
+        return train_hist
+
+        # return D_model_train_loss.data[0], G_model_train_loss.data[0], train_hist
 
 
 def train_and_evaluate(param_cuda, dataset, G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch, model_dir, restore_file=None):
@@ -98,11 +130,13 @@ def train_and_evaluate(param_cuda, dataset, G_model, D_model, G_optimizer, D_opt
     start_time = time.time()
 
     # here we are going to save the losses.
-    D_model_losses = []
-    G_model_losses = []
+    #D_model_losses = []
+    #G_model_losses = []
     train_hist = {}
     train_hist['D_model_losses'] = []
     train_hist['G_model_losses'] = []
+    train_hist['D_model_mean_losses'] = []
+    train_hist['G_model_mean_losses'] = []
     train_hist['per_epoch_ptimes'] = []
     train_hist['total_ptime'] = []
 
@@ -124,16 +158,17 @@ def train_and_evaluate(param_cuda, dataset, G_model, D_model, G_optimizer, D_opt
         epoch_start_time = time.time()
 
         # compute number of batches in one epoch (one full pass over the training set)
-        D_model_loss, G_model_loss = train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, param_cuda)
-        D_model_losses.append(D_model_loss)
-        G_model_losses.append(G_model_loss)
+        train_hist = train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, param_cuda, train_hist, train_epoch, model_dir)
+
+        #D_model_losses.append(D_model_loss)
+        #G_model_losses.append(G_model_loss)
 
         epoch_end_time = time.time()
         per_epoch_ptime = epoch_end_time - epoch_start_time
 
         #prints in every epoch:
         print("iteration number "+str(epoch))
-        print('[%d/%d] - ptime: %.2f, loss_d: %.3f, loss_g: %.3f' % ((epoch + 1), train_epoch, per_epoch_ptime, torch.mean(torch.FloatTensor(D_model_losses)), torch.mean(torch.FloatTensor(G_model_losses))))
+        print('[%d/%d] - ptime: %.2f, loss_d: %.3f, loss_g: %.3f' % ((epoch + 1), train_epoch, per_epoch_ptime, torch.mean(torch.FloatTensor(train_hist['D_model_mean_losses'])), torch.mean(torch.FloatTensor(train_hist['G_model_mean_losses']))))
 
         # Save weights
         utils.save_checkpoint({'epoch': epoch + 1,
@@ -150,9 +185,7 @@ def train_and_evaluate(param_cuda, dataset, G_model, D_model, G_optimizer, D_opt
         utils.show_result(param_cuda, G_model, (epoch+1), save=True, path=p, isFix=False)
         utils.show_result(param_cuda, G_model, (epoch+1), save=True, path=fixed_p, isFix=True)
 
-        # add losses to the training history
-        train_hist['D_model_losses'].append(torch.mean(torch.FloatTensor(D_model_losses)))
-        train_hist['G_model_losses'].append(torch.mean(torch.FloatTensor(G_model_losses)))
+        # add epoch time to the training history
         train_hist['per_epoch_ptimes'].append(per_epoch_ptime)
 
 
@@ -169,21 +202,26 @@ def train_and_evaluate(param_cuda, dataset, G_model, D_model, G_optimizer, D_opt
     with open(dataset + '_results/train_hist.pkl', 'wb') as f:
         pickle.dump(train_hist, f)
     # plot training history
-    utils.show_train_hist(train_hist, save=True, path=dataset + '_results/_train_hist.png')
+    utils.show_train_hist(train_hist, save=True, path1=dataset + '_results/_train_hist1.png', path2=dataset + '_results/_train_hist_mean.png')
 
+    writer.export_scalars_to_json("./all_scalars.json")
+    writer.close()
 
 if __name__ == '__main__':
 
     # training
     batch_size = 128
     lr = 0.0002
-    train_epoch = 5
-    #data_dir = 'new_images'
-    #dataset = "Chairs"
-    #model_dir = 'model_folder'
-    data_dir = 'Imagenet'
-    dataset = 'Imagenet'
-    model_dir = 'imagenet_folder'
+    train_epoch = 2
+    data_dir = 'new_images'
+    dataset = "Chairs"
+    model_dir = 'model_folder'
+    #data_dir = 'Imagenet'
+    #dataset = 'Imagenet'
+    #dataset = 'MNIST'
+    #model_dir = 'imagenet_folder'
+
+    writer = SummaryWriter('runs')
 
     # use GPU if available
     param_cuda = torch.cuda.is_available()
@@ -253,4 +291,4 @@ if __name__ == '__main__':
 
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(train_epoch))
-    train_and_evaluate(param_cuda, dataset, G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch, model_dir, restore_file=None)
+    train_and_evaluate(param_cuda, dataset, G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch, model_dir, restore_file='last')
