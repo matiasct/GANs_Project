@@ -14,7 +14,7 @@ from PIL import Image
 
 
 
-def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, param_cuda):
+def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, param_cuda, train_epoch, model_dir):
 
     # set models to training mode
     G_model.train()
@@ -23,7 +23,7 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
     # Use tqdm for progress bar
     with tqdm(total=len(train_loader)) as t:
 
-        for inputs_real in train_loader:
+        for i, inputs_real in enumerate(train_loader):
 
             # move to GPU if available
             inputs_real = inputs_real.cuda(async=True) if param_cuda else inputs_real
@@ -79,6 +79,16 @@ def train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, met
             print("D loss: " + str(D_model_train_loss.data[0]))
             print("G loss: " + str(G_model_train_loss.data[0]))
 
+            # Save weights
+            if i%100 == 0:
+                utils.save_checkpoint({'epoch': train_epoch + 1,
+                               'D_model_state_dict': D_model.state_dict(),
+                               'G_model_state_dict': G_model.state_dict(),
+                               'D_optim_dict': D_optimizer.state_dict(),
+                               'G_optim_dict': G_optimizer.state_dict()},
+                               is_best=False,
+                               checkpoint = model_dir)
+
             t.update()
 
         #return actual losses
@@ -124,7 +134,7 @@ def train_and_evaluate(param_cuda, dataset, G_model, D_model, G_optimizer, D_opt
         epoch_start_time = time.time()
 
         # compute number of batches in one epoch (one full pass over the training set)
-        D_model_loss, G_model_loss = train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, param_cuda)
+        D_model_loss, G_model_loss = train(G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, param_cuda, train_epoch, model_dir)
         D_model_losses.append(D_model_loss)
         G_model_losses.append(G_model_loss)
 
@@ -253,4 +263,4 @@ if __name__ == '__main__':
 
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(train_epoch))
-    train_and_evaluate(param_cuda, dataset, G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch, model_dir, restore_file=None)
+    train_and_evaluate(param_cuda, dataset, G_model, D_model, G_optimizer, D_optimizer, loss_fn, train_loader, metrics, train_epoch, model_dir, restore_file='last')
