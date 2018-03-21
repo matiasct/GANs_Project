@@ -4,12 +4,8 @@ import torch.nn.functional as F
 import numpy as np
 
 """
-Here I implement the DC-GAN architecture including:
-- Generator class
-- Discriminator class
-- Weights initialization
-- Loss function
-
+Implementation of a Deep Convolutional GAN.
+Using images of size 64x64 and RGB.
 """
 
 # Generator G(z)
@@ -25,7 +21,7 @@ class generator(nn.Module):
         self.deconv3_bn = nn.BatchNorm2d(d*2)
         self.deconv4 = nn.ConvTranspose2d(d*2, d, 4, 2, 1)
         self.deconv4_bn = nn.BatchNorm2d(d)
-        self.deconv5 = nn.ConvTranspose2d(d, 1, 4, 2, 1)
+        self.deconv5 = nn.ConvTranspose2d(d, 3, 4, 2, 1)
 
     # weight_init
     def weight_init(self, mean, std):
@@ -39,7 +35,8 @@ class generator(nn.Module):
         x = F.relu(self.deconv2_bn(self.deconv2(x)))
         x = F.relu(self.deconv3_bn(self.deconv3(x)))
         x = F.relu(self.deconv4_bn(self.deconv4(x)))
-        x = F.tanh(self.deconv5(x))
+        x = self.deconv5(x)
+        #x = F.tanh(self.deconv5(x))
 
         return x
 
@@ -48,7 +45,7 @@ class discriminator(nn.Module):
     # initializers
     def __init__(self, d=128):
         super(discriminator, self).__init__()
-        self.conv1 = nn.Conv2d(1, d, 4, 2, 1)
+        self.conv1 = nn.Conv2d(3, d, 4, 2, 1)
         self.conv2 = nn.Conv2d(d, d*2, 4, 2, 1)
         self.conv2_bn = nn.BatchNorm2d(d*2)
         self.conv3 = nn.Conv2d(d*2, d*4, 4, 2, 1)
@@ -72,7 +69,6 @@ class discriminator(nn.Module):
 
         return x
 
-
 #Normal Initialization
 def normal_init(m, mean, std):
     if isinstance(m, nn.ConvTranspose2d) or isinstance(m, nn.Conv2d):
@@ -84,23 +80,3 @@ def loss_fn(outputs, labels):
     BCE_loss = nn.BCELoss()
     return BCE_loss(outputs, labels)
 
-
-def accuracy(outputs, labels):
-    """
-    Compute the accuracy, given the outputs and labels for all images.
-
-    Args:
-        outputs: (np.ndarray) dimension batch_size x 6 - log softmax output of the model
-        labels: (np.ndarray) dimension batch_size, where each element is a value in [0, 1, 2, 3, 4, 5]
-
-    Returns: (float) accuracy in [0,1]
-    """
-    outputs = np.argmax(outputs, axis=1)
-    return np.sum(outputs==labels)/float(labels.size)
-
-
-# maintain all metrics required in this dictionary- these are used in the training and evaluation loops
-metrics = {
-    'accuracy': accuracy,
-    # could add more metrics such as accuracy for each token type
-}
