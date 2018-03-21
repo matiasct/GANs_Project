@@ -137,6 +137,7 @@ def load_checkpoint(checkpoint, D_model, G_model, D_optimizer=None, G_optimizer=
     """
     if not os.path.exists(checkpoint):
         raise("File doesn't exist {}".format(checkpoint))
+    print(checkpoint)
     checkpoint = torch.load(checkpoint)
     D_model.load_state_dict(checkpoint['D_model_state_dict'])
     G_model.load_state_dict(checkpoint['G_model_state_dict'])
@@ -149,10 +150,25 @@ def load_checkpoint(checkpoint, D_model, G_model, D_optimizer=None, G_optimizer=
     return checkpoint
 
 
-def show_train_hist(hist, show = False, save = False, path = 'Train_hist.png'):
-    x = range(len(hist['D_model_losses']))
-    y1 = hist['D_model_losses']
-    y2 = hist['G_model_losses']
+def show_train_hist(hist, show = False, save = False, path1 = 'Train_hist1.png', path2 = 'Train_hist_mean.png'):
+    ''''
+    x_ = range(len(hist['D_model_losses']))
+    y1_ = hist['D_model_losses']
+    y2_ = hist['G_model_losses']
+    plt.plot(x_, y1_, label='D_loss')
+    plt.plot(x_, y2_, label='G_loss')
+    plt.xlabel('Iter')
+    plt.ylabel('Loss')
+    plt.legend(loc=4)
+    plt.grid(True)
+    plt.tight_layout()
+    if save:
+        plt.savefig(path1)
+    '''
+
+    x = range(len(hist['D_model_mean_losses']))
+    y1 = hist['D_model_mean_losses']
+    y2 = hist['G_model_mean_losses']
     plt.plot(x, y1, label='D_loss')
     plt.plot(x, y2, label='G_loss')
     plt.xlabel('Iter')
@@ -161,7 +177,7 @@ def show_train_hist(hist, show = False, save = False, path = 'Train_hist.png'):
     plt.grid(True)
     plt.tight_layout()
     if save:
-        plt.savefig(path)
+        plt.savefig(path2)
     if show:
         plt.show()
     else:

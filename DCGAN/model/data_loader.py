@@ -68,7 +68,7 @@ class ImagenetDataset(Dataset):
         base_folder = data_dir
 
         train_list = []
-        for i in range(1,9):
+        for i in range(1,2):
             name = 'train_data_batch_'+str(i)
             train_list.append(name)
 
@@ -130,9 +130,9 @@ def fetch_dataloader(data_dir, batch_size, dataset):
     if dataset == "Chairs":
         dataloader = DataLoader(ChairsDataset(data_dir, train_transformer), batch_size=batch_size, shuffle=True)
 
-    elif dataset == "Cifar10":
+    elif dataset == "MNIST":
         dataloader = torch.utils.data.DataLoader(
-            datasets.CIFAR10(data_dir, train=True, download=True, transform=train_transformer),
+            datasets.MNIST('data_MNIST', train=True, download=True, transform=train_transformer),
             batch_size=batch_size, shuffle=True)
 
     elif dataset == "Imagenet":

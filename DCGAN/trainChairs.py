@@ -12,6 +12,8 @@ from model import data_loader as data_loader
 from tensorboardX import SummaryWriter
 import numpy as np
 from PIL import Image
+import matplotlib.pyplot as plt
+import itertools
 
 
 
@@ -212,8 +214,8 @@ if __name__ == '__main__':
     batch_size = 128
     lr = 0.0002
     train_epoch = 2
-    data_dir = 'new_images'
-    dataset = "Chairs"
+    data_dir = 'Imagenet'
+    dataset = "Imagenet"
     model_dir = 'model_folder'
     #data_dir = 'Imagenet'
     #dataset = 'Imagenet'
@@ -252,6 +254,8 @@ if __name__ == '__main__':
 
     # data_loader
     train_loader = data_loader.fetch_dataloader(data_dir, batch_size, dataset)
+
+
     print('dataset length '+str(len(train_loader.dataset)))
 
     ''' try to plot images directly from files and also from pythorch dataset

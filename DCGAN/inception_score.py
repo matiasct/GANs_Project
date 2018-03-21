@@ -89,7 +89,7 @@ if __name__ == '__main__':
     import torchvision.transforms as transforms
 
 
-
+    '''
     cifar = dset.CIFAR10(root='data/', download=True,
                              transform=transforms.Compose([
                                  transforms.Scale(32),
@@ -99,9 +99,9 @@ if __name__ == '__main__':
     )
 
     IgnoreLabelDataset(cifar)
-
-    data_dir = 'Imagenet'
-    dataset = 'cifar'
+    '''
+    #data_dir = 'Imagenet'
+    #dataset = 'cifar'
     batch_size = 128
     #train_loader = data_loader.fetch_dataloader(data_dir, batch_size, dataset)
 
@@ -113,4 +113,6 @@ if __name__ == '__main__':
 
 
     print ("Calculating Inception Score...")
-    print (inception_score(data_loader.ImagenetDataset(data_dir, train_transformer), cuda=False, batch_size=32, resize=True, splits=10))
+    #print (inception_score(data_loader.ImagenetDataset(data_dir, train_transformer), cuda=False, batch_size=32, resize=True, splits=10))
+    #print (inception_score(data_loader.ChairsDataset('clean_chairs', train_transformer), cuda=False, batch_size=32, resize=True, splits=10))
+    print (inception_score(data_loader.ChairsDataset('clean_chairs', train_transformer), cuda=False, batch_size=32, resize=True, splits=10))
